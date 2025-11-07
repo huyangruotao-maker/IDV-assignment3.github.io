@@ -176,41 +176,105 @@ svg2.append('text').attr('x',15).attr('y',24).attr('fill','#64748b').attr('font-
   .text('多区域多圆渐变与星形特征');
 
 // 图3 多部位人物（多彩渐变）
-const svg3 = d3.select('#peopleSketch').attr('width',width).attr('height',height);
-// 头部椭圆+渐变
-const gradHead = svg3.append('defs').append('radialGradient').attr('id','headG');
-gradHead.append('stop').attr('offset','20%').attr('stop-color','#f472b6');
-gradHead.append('stop').attr('offset','100%').attr('stop-color','#8b5cf6');
-svg3.append('ellipse')
-  .attr('cx',140).attr('cy',65).attr('rx',38).attr('ry',50)
-  .attr('stroke','#6d28d9').attr('stroke-width',4)
-  .attr('fill','url(#headG)');
-svg3.append('rect')
-  .attr('x',100).attr('y',120).attr('width',80).attr('height',68)
-  .attr('fill','url(#bodyG)')
-  .attr('stroke','#2563eb').attr('stroke-width',3)
-  .attr('rx',14);
-// 身体渐变
-const gradBody = svg3.append('defs').append('linearGradient').attr('id','bodyG').attr('x1','0%').attr('y1','0%').attr('x2','100%').attr('y2','100%');
-gradBody.append('stop').attr('offset','0%').attr('stop-color','#faf089');
-gradBody.append('stop').attr('offset','100%').attr('stop-color','#fbbf24');
-// 面部 – 眼睛嘴巴
-svg3.append('ellipse').attr('cx',130).attr('cy',58).attr('rx',5).attr('ry',2).attr('fill','#222');
-svg3.append('ellipse').attr('cx',150).attr('cy',58).attr('rx',6).attr('ry',3).attr('fill','#222');
-svg3.append('path').attr('d','M132,75 Q140,85 148,75').attr('stroke','#ef4444').attr('fill','none').attr('stroke-width',3)
-  .attr('opacity',.8);
-// 书本叠加
-svg3.append('rect').attr('x',128).attr('y',180).attr('width',24).attr('height',16).attr('fill','#bbf7d0')
-  .attr('stroke','#14b8a6').attr('stroke-width',2).attr('rx',3);
-// 笔（多段线） – 动画画线
-svg3.append('line').attr('x1',156).attr('y1',178).attr('x2',168).attr('y2',200)
-  .attr('stroke','#1e40af').attr('stroke-width',5).attr('stroke-linecap','round')
-  .transition().delay(298).duration(700).attr('x2',130);
-svg3.append('text').attr('x',92).attr('y',36).attr('font-size',13).attr('fill','#16a34a')
-  .text('丰富的人物多形部位');
-svg3.select('ellipse')
-  .on('mouseover',function(){svg3.select('ellipse').transition().attr('rx',48).attr('ry',55);})
-  .on('mouseout',function(){svg3.select('ellipse').transition().attr('rx',38).attr('ry',50);});
+<svg id="ayaChar" width="330" height="330"></svg>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const svg = d3.select("#ayaChar").attr("width",330).attr("height",330);
+// 背景光晕
+svg.append("ellipse")
+  .attr("cx",165).attr("cy",165).attr("rx",105).attr("ry",98)
+  .attr("fill","url(#bgHalo)").attr("opacity",0.7);
+svg.append("defs").append("radialGradient").attr("id","bgHalo")
+  .selectAll("stop").data([
+    {offset:"0%",color:"#f5e8fa"},
+    {offset:"60%",color:"#fbbf24"},
+    {offset:"95%",color:"white",opacity:0}
+  ]).enter().append("stop")
+  .attr("offset",d=>d.offset).attr("stop-color",d=>d.color).attr("stop-opacity",d=>d.opacity||1);
+// 脸椭圆和渐变肤色
+svg.append("ellipse")
+  .attr("cx",165).attr("cy",138).attr("rx",49).attr("ry",65)
+  .attr("fill","url(#skinGrad)").attr("stroke","#e2ccc2").attr("stroke-width",3);
+const gSkin = svg.append("defs").append("radialGradient").attr("id","skinGrad");
+gSkin.append("stop").attr("offset","0%").attr("stop-color","#fae7d5");
+gSkin.append("stop").attr("offset","90%").attr("stop-color","#ecd9e2");
+// 头发（发丝分层、多段渐变模拟）
+svg.append("path")
+  .attr("d","M105,109 Q132,87 165,80 Q205,95 225,118 Q153,123 120,123 Z")
+  .attr("fill","url(#hairGrad1)").attr("stroke","#ad7697").attr("stroke-width","3");
+gHair1 = svg.append("defs").append("linearGradient").attr("id","hairGrad1").attr("x1","0%"),gHair1.attr("y1","0%"),gHair1.attr("x2","100%"),gHair1.attr("y2","0%");
+gHair1.append("stop").attr("offset","0%") .attr("stop-color","#eef1ff");
+gHair1.append("stop").attr("offset","100%") .attr("stop-color","#a78bfa");
+svg.append("path")
+  .attr("d","M117,82 Q148,72 180,78 Q218,82 236,106 Q183,99 126,102 Z")
+  .attr("fill","url(#hairGrad2)").attr("stroke","#ad7697").attr("stroke-width","3").attr("opacity",0.58);
+const gHair2 = svg.append("defs").append("linearGradient").attr("id","hairGrad2").attr("x1","0%"),gHair2.attr("y1","0%"),gHair2.attr("x2","100%"),gHair2.attr("y2","0%");
+gHair2.append("stop").attr("offset","0%") .attr("stop-color","#fff1fb");
+gHair2.append("stop").attr("offset","100%") .attr("stop-color","#fb7185");
+svg.append("ellipse") // 左耳朵（羊角模拟）
+  .attr("cx",99).attr("cy",112).attr("rx",18).attr("ry",14)
+  .attr("fill","url(#earGrad)").attr("stroke","#8c5aaa").attr("stroke-width","2");
+svg.append("ellipse") // 右耳朵（羊角模拟）
+  .attr("cx",231).attr("cy",112).attr("rx",18).attr("ry",14)
+  .attr("fill","url(#earGrad)").attr("stroke","#8c5aaa").attr("stroke-width","2");
+const earG = svg.append("defs").append("radialGradient").attr("id","earGrad");
+earG.append("stop").attr("offset","0%") .attr("stop-color","#ede7f6");
+earG.append("stop").attr("offset","100%") .attr("stop-color","#a78bfa");
+// 帽子顶部
+svg.append("ellipse")
+  .attr("cx",165).attr("cy",60).attr("rx",35).attr("ry",14)
+  .attr("fill","url(#hatGrad)").attr("stroke","#635d5c").attr("stroke-width","2");
+const gHat = svg.append("defs").append("linearGradient").attr("id","hatGrad").attr("x1","0%"),gHat.attr("y1","0%"),gHat.attr("x2","100%"),gHat.attr("y2","100%");
+gHat.append("stop").attr("offset","0%") .attr("stop-color","#313e6b");
+gHat.append("stop").attr("offset","100%") .attr("stop-color","#fbbf24");
+// 眼睛
+svg.append("ellipse").attr("cx",145).attr("cy",145).attr("rx",7).attr("ry",5)
+  .attr("fill","#7c3aed").attr("stroke","#222").attr("stroke-width",2);
+svg.append("ellipse").attr("cx",185).attr("cy",145).attr("rx",7).attr("ry",5)
+  .attr("fill","#e597a2").attr("stroke","#222").attr("stroke-width",2);
+// 眉毛（两段线）
+svg.append("line").attr("x1",137).attr("y1",133).attr("x2",152).attr("y2",129)
+  .attr("stroke","#7c3aed").attr("stroke-width",3);
+svg.append("line").attr("x1",177).attr("y1",129).attr("x2",192).attr("y2",131)
+  .attr("stroke","#e597a2").attr("stroke-width",3);
+// 嘴巴（曲线）
+svg.append("path")
+  .attr("d","M148,162 Q165,170 182,163")
+  .attr("stroke","#e597a2").attr("stroke-width",2)
+  .attr("fill","none");
+// 法杖（多段线+装饰）
+svg.append("rect")
+  .attr("x",158).attr("y",203).attr("width",14).attr("height",51)
+  .attr("fill","url(#stickGrad)").attr("rx",6)
+  .attr("opacity",0.7);
+const stickG = svg.append("defs").append("linearGradient").attr("id","stickGrad").attr("x1","50%"),stickG.attr("y1","0%"),stickG.attr("x2","100%"),stickG.attr("y2","100%");
+stickG.append("stop").attr("offset","0%") .attr("stop-color","#fbbf24");
+stickG.append("stop").attr("offset","100%") .attr("stop-color","#fb7185");
+svg.append("ellipse") // 法杖火球顶端
+  .attr("cx",165).attr("cy",205).attr("rx",13).attr("ry",7)
+  .attr("fill","url(#fireGrad)").attr("opacity",0.66);
+const fireG = svg.append("defs").append("radialGradient").attr("id","fireGrad");
+fireG.append("stop").attr("offset","0%") .attr("stop-color","#fde68a");
+fireG.append("stop").attr("offset","100%") .attr("stop-color","#fb7185");
+// 衣服（曲线模拟披风）
+svg.append("path")
+  .attr("d","M105,173 Q135,240 225,173 Q210,235 165,250 Q120,235 105,173 Z")
+  .attr("fill","url(#cloakGrad)")
+  .attr("stroke","#7c3aed")
+  .attr("stroke-width",3)
+  .attr("opacity",0.72);
+const cloakG = svg.append("defs").append("linearGradient").attr("id","cloakGrad").attr("x1","0%"),cloakG.attr("y1","0%"),cloakG.attr("x2","100%"),cloakG.attr("y2","0%");
+cloakG.append("stop").attr("offset","0%") .attr("stop-color","#a5f3fc");
+cloakG.append("stop").attr("offset","100%") .attr("stop-color","#fbbf24");
+// 鼠标悬停头部大变色动画
+svg.select('ellipse').on('mouseover',function(){
+  d3.select(this).transition().duration(400).attr('rx',65).attr('fill','#fb7185');
+}).on('mouseout',function(){
+  d3.select(this).transition().duration(400).attr('rx',49).attr('fill','url(#skinGrad)');
+});
+svg.append("text").attr("x",108).attr("y",25).attr("font-size",15).attr("fill","#bc96e6")
+  .text("明日方舟-艾雅法拉示意");
+</script>
 
 // 图4 更丰富堆叠面积图
 const svg4 = d3.select('#areaStacked').attr('width',280).attr('height',180);
