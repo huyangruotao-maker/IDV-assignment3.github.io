@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>D3.js 五图横向展示</title>
+  <title>更复杂的 D3.js 五图横向展示</title>
   <style>
     .charts-row {
       display: flex;
@@ -11,162 +11,300 @@
       align-items: flex-start;
     }
     .chart-block { text-align: center; }
-    svg { background: #fafafa; border-radius: 7px; box-shadow: 0 1px 4px #eee; }
+    svg { background: #f8fafc; border-radius: 10px; box-shadow: 0 1px 6px #ddd; }
     h3 { margin-bottom: 10px; font-size: 16px; }
   </style>
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
-  <div class="charts-row">
-    <div class="chart-block">
-      <h3>图1 空间轨迹</h3>
-      <svg id="trajChart" width="280" height="280"></svg>
-    </div>
-    <div class="chart-block">
-      <h3>图2 空间覆盖区</h3>
-      <svg id="spaceCoverage" width="280" height="280"></svg>
-    </div>
-    <div class="chart-block">
-      <h3>图3 人物示意</h3>
-      <svg id="peopleSketch" width="280" height="280"></svg>
-    </div>
-    <div class="chart-block">
-      <h3>图4 堆叠面积图</h3>
-      <svg id="areaStacked" width="280" height="180"></svg>
-    </div>
-    <div class="chart-block">
-      <h3>图5 网络图</h3>
-      <svg id="networkGraph" width="280" height="280"></svg>
-    </div>
+<div class="charts-row">
+  <div class="chart-block">
+    <h3>图1 复杂空间轨迹</h3>
+    <svg id="trajChart" width="280" height="280"></svg>
   </div>
+  <div class="chart-block">
+    <h3>图2 多区域多覆盖</h3>
+    <svg id="spaceCoverage" width="280" height="280"></svg>
+  </div>
+  <div class="chart-block">
+    <h3>图3 多部位人物</h3>
+    <svg id="peopleSketch" width="280" height="280"></svg>
+  </div>
+  <div class="chart-block">
+    <h3>图4 彩色堆叠面积图</h3>
+    <svg id="areaStacked" width="280" height="180"></svg>
+  </div>
+  <div class="chart-block">
+    <h3>图5 炫彩网络图</h3>
+    <svg id="networkGraph" width="280" height="280"></svg>
+  </div>
+</div>
+<script>
+// 图1 复杂空间轨迹
+const gridSize=23, gridNum=12, width=280, height=280;
+const pathDots = Array.from({length: 8}, (_,i)=>({x:2+i, y:2+Math.round(3*Math.sin(i)), label:i==0?'start':(i==7?'end':undefined)}));
+const coveredZones = [
+  [ {x:4,y:4},{x:8,y:5},{x:7,y:9},{x:3,y:8} ],
+  [ {x:1,y:7},{x:4,y:7},{x:3,y:11},{x:1,y:11} ]
+];
+const svg1 = d3.select('#trajChart').attr('width',width).attr('height',height);
+svg1.append('g').selectAll('line')
+  .data(d3.range(gridNum+1)).enter().append('line')
+  .attr('x1',d=>d*gridSize).attr('y1',0).attr('x2',d=>d*gridSize).attr('y2',height).attr('stroke','#cbd5e1');
+svg1.append('g').selectAll('line.horz')
+  .data(d3.range(gridNum+1)).enter().append('line')
+  .attr('y1',d=>d*gridSize).attr('x1',0).attr('y2',d=>d*gridSize).attr('x2',width).attr('stroke','#cbd5e1');
+coveredZones.forEach((zone,i) => {
+  svg1.append('polygon')
+    .attr('points', zone.map(d=>[d.x*gridSize,d.y*gridSize].join(",")).join(" ") )
+    .attr('fill',d3.interpolateRainbow(i/2 + 0.1))
+    .attr('opacity',0.33)
+    .on('mouseover',function() { d3.select(this).attr('opacity',0.7); })
+    .on('mouseout',function() { d3.select(this).attr('opacity',0.33); });
+});
+svg1.append('defs').append('marker')
+  .attr('id','arrowA')
+  .attr('viewBox','0 -5 10 10')
+  .attr('refX',6).attr('refY',0)
+  .attr('markerWidth',8)
+  .attr('markerHeight',8)
+  .attr('orient','auto')
+  .append('path')
+  .attr('d','M0,-5L10,0L0,5')
+  .attr('fill','#d97706');
+const rainbowLine = d3.line()
+  .x(d=>d.x*gridSize)
+  .y(d=>d.y*gridSize);
+const trajPath = svg1.append('path')
+  .attr('d', rainbowLine(pathDots))
+  .attr('fill','none')
+  .attr('stroke','url(#rainbowGradient)')
+  .attr('stroke-width', 4)
+  .attr('marker-end','url(#arrowA)')
+  .attr('stroke-dasharray',function(){return this.getTotalLength();})
+  .attr('stroke-dashoffset',function(){return this.getTotalLength();});
+trajPath.transition().duration(1100).attr('stroke-dashoffset',0);
+// 渐变色轨迹
+const grad = svg1.append('defs').append('linearGradient')
+  .attr('id','rainbowGradient')
+  .attr('x1','0%').attr('y1','0%').attr('x2','100%').attr('y2','100%');
+for(let i=0;i<pathDots.length;++i){
+  grad.append('stop').attr('offset',(i/(pathDots.length-1)*100)+"%")
+    .attr('stop-color', d3.interpolateRainbow(i/(pathDots.length-1)));
+}
+svg1.selectAll('rect.point').data(pathDots)
+  .enter().append('rect')
+    .attr('class','point')
+    .attr('x',d=>d.x*gridSize-7).attr('y',d=>d.y*gridSize-7)
+    .attr('width',d=>d.label?14:0)
+    .attr('height',d=>d.label?14:0)
+    .attr('fill',d=>d.label==='start'?'#a7f3d0':d.label==='end'?'#fca5a5':'none')
+    .attr('stroke',d=>d.label?'#78716c':'none').attr('stroke-width',d=>d.label?2:0);
+svg1.selectAll('circle.dot').data(pathDots).enter().append('circle')
+  .attr('class','dot').attr('cx',d=>d.x*gridSize).attr('cy',d=>d.y*gridSize).attr('r',7)
+  .attr('fill',(d,i)=>d3.interpolateRainbow(i/(pathDots.length-1)))
+  .attr('opacity', 0.8)
+  .on('mouseover',function(e,d){
+    d3.select(this).transition().attr('r',11);
+    svg1.append('text')
+      .attr('id','tip')
+      .attr('x',d.x*gridSize+10)
+      .attr('y',d.y*gridSize-8)
+      .attr('fill','#111')
+      .attr('font-size',12)
+      .attr('font-weight',600)
+      .text(d.label?`${d.label} (${d.x},${d.y})`:`(${d.x},${d.y})`);
+  })
+  .on('mouseout',function(e,d){
+    d3.select(this).transition().attr('r',7);
+    svg1.select('#tip').remove();
+  });
+svg1.append('text')
+  .attr('x',19).attr('y',20).attr('font-size',12).attr('fill','#f59e42')
+  .text('拼接两片覆盖区域与彩虹路径');
 
-  <script>
-    // 图1 空间轨迹图
-    const gridSize=23, gridNum=12, width=280, height=280;
-    const pathDots=[{x:2,y:2,label:'start'},{x:4,y:5},{x:6,y:7},{x:9,y:8,label:'end'}];
-    const coveredZone=[{x:4,y:4},{x:7,y:4},{x:7,y:9},{x:4,y:9}];
-    const svg1 = d3.select('#trajChart').attr('width',width).attr('height',height);
-    svg1.append('g').selectAll('line').data(d3.range(gridNum+1)).enter().append('line')
-      .attr('x1',d=>d*gridSize).attr('y1',0).attr('x2',d=>d*gridSize).attr('y2',height).attr('stroke','#e5e7eb');
-    svg1.append('g').selectAll('line.horz').data(d3.range(gridNum+1)).enter().append('line')
-      .attr('y1',d=>d*gridSize).attr('x1',0).attr('y2',d=>d*gridSize).attr('x2',width).attr('stroke','#e5e7eb');
-    svg1.append('polygon').attr('points',coveredZone.map(d=>[d.x*gridSize,d.y*gridSize].join(",")).join(" "))
-      .attr('fill','#60a5fa').attr('opacity',0.35);
-    svg1.append('defs').append('marker')
-      .attr('id','arrow').attr('viewBox','0 -5 10 10').attr('refX',6).attr('refY',0)
-      .attr('markerWidth',8).attr('markerHeight',8).attr('orient','auto')
-      .append('path').attr('d','M0,-5L10,0L0,5').attr('fill','#1d4ed8');
-    const line = d3.line().x(d=>d.x*gridSize).y(d=>d.y*gridSize);
-    const trajPath=svg1.append('path').attr('d',line(pathDots)).attr('fill','none').attr('stroke','#2563eb')
-      .attr('stroke-width',4).attr('marker-end','url(#arrow)')
-      .attr('stroke-dasharray',function(){return this.getTotalLength();})
-      .attr('stroke-dashoffset',function(){return this.getTotalLength();});
-    trajPath.transition().duration(700).attr('stroke-dashoffset',0);
-    svg1.selectAll('rect.point').data(pathDots).enter().append('rect')
-      .attr('class','point').attr('x',d=>d.x*gridSize-6).attr('y',d=>d.y*gridSize-6)
-      .attr('width',d=>d.label?12:0).attr('height',d=>d.label?12:0)
-      .attr('fill',d=>d.label==='start'?'#22d3ee':d.label==='end'?'#f472b6':'none')
-      .attr('stroke',d=>d.label?'#374151':'none').attr('stroke-width',d=>d.label?2:0);
-    svg1.selectAll('circle.dot').data(pathDots).enter().append('circle')
-      .attr('class','dot').attr('cx',d=>d.x*gridSize).attr('cy',d=>d.y*gridSize).attr('r',5)
-      .attr('fill','#2563eb')
-      .on('mouseover',function(e,d){d3.select(this).attr('fill','#fbbf24'); svg1.append('text').attr('id','tip')
-        .attr('x',d.x*gridSize+6).attr('y',d.y*gridSize-8).attr('fill','#222')
-        .text(d.label?`${d.label} (${d.x},${d.y})`:`(${d.x},${d.y})`); })
-      .on('mouseout',function(e,d){d3.select(this).attr('fill','#2563eb');svg1.select('#tip').remove();});
+// 图2 多区域、多圆覆盖
+const svg2 = d3.select('#spaceCoverage').attr('width',width).attr('height',height);
+svg2.append('g').selectAll('line')
+  .data(d3.range(gridNum+1)).enter().append('line')
+  .attr('x1',d=>d*gridSize).attr('y1',0).attr('x2',d=>d*gridSize).attr('y2',height).attr('stroke','#cbd5e1');
+svg2.append('g').selectAll('line')
+  .data(d3.range(gridNum+1)).enter().append('line')
+  .attr('y1',d=>d*gridSize).attr('x1',0).attr('y2',d=>d*gridSize).attr('x2',width).attr('stroke','#cbd5e1');
+const polys = [
+  [ {x:2,y:3},{x:7,y:4},{x:6,y:9},{x:1,y:8} ],
+  [ {x:8,y:2},{x:11,y:2},{x:11,y:6},{x:8,y:7} ]
+];
+polys.forEach((zone,i)=>{
+  svg2.append('polygon').attr('points',zone.map(d=>[d.x*gridSize,d.y*gridSize].join(",")).join(' '))
+    .attr('fill',d3.interpolateCool(i/2+0.3)).attr('opacity',.35)
+    .on('mouseover', function(){d3.select(this).attr('opacity',0.7);})
+    .on('mouseout', function(){d3.select(this).attr('opacity',.35);});
+});
+const circles = [
+  {cx:7*gridSize, cy:6*gridSize, r:3*gridSize, c:'#fdba74'},
+  {cx:10*gridSize, cy:4*gridSize, r:2*gridSize, c:'#7dd3fc'}
+];
+circles.forEach((d,i)=>{
+  svg2.append('circle')
+    .attr('cx',d.cx).attr('cy',d.cy).attr('r',0)
+    .attr('fill','url(#radial'+i+')')
+    .attr('opacity',0.7)
+    .transition().delay(300*i).duration(800).attr('r',d.r);
+  // 径向渐变
+  const grad2 = svg2.append('defs').append('radialGradient')
+    .attr('id','radial'+i);
+  grad2.append('stop').attr('offset','0%').attr('stop-color',d.c);
+  grad2.append('stop').attr('offset','80%').attr('stop-color','white').attr('stop-opacity',0);
+});
+// 特征点
+const pointsArr=[
+  {x:3, y:4, v:13}, {x:8, y:3, v:35},{x:10,y:6, v:57}
+];
+svg2.selectAll('star')
+  .data(pointsArr).enter().append('polygon')
+  .attr('points', d => Array.from({length:5},(_,i)=>{
+    let a = Math.PI*2*i/5-0.5;
+    let R=(i%2==0?10:4);
+    return [d.x*gridSize+Math.cos(a)*R, d.y*gridSize+Math.sin(a)*R].join(',');
+  }).join(' '))
+  .attr('fill',(d,i)=>d3.interpolateTurbo(d.v/60))
+  .attr('stroke','#444').attr('opacity',.95)
+  .on('mouseover',function(e,d){d3.select(this).attr('fill','#a21caf').attr('stroke','#eab308');})
+  .on('mouseout',function(e,d){d3.select(this).attr('fill',d3.interpolateTurbo(d.v/60)).attr('stroke','#444');});
+svg2.append('text').attr('x',15).attr('y',24).attr('fill','#64748b').attr('font-size',12)
+  .text('多区域多圆渐变与星形特征');
 
-    // 图2 空间覆盖区
-    const svg2 = d3.select('#spaceCoverage').attr('width',width).attr('height',height);
-    svg2.append('g').selectAll('line').data(d3.range(gridNum+1)).enter().append('line')
-      .attr('x1',d=>d*gridSize).attr('y1',0).attr('x2',d=>d*gridSize).attr('y2',height).attr('stroke','#e5e7eb');
-    svg2.append('g').selectAll('line').data(d3.range(gridNum+1)).enter().append('line')
-      .attr('y1',d=>d*gridSize).attr('x1',0).attr('y2',d=>d*gridSize).attr('x2',width).attr('stroke','#e5e7eb');
-    const color = d3.scaleLinear().domain([0,1]).range(["#fbbf24","#2563eb"]);
-    const polyPoints=[{x:3,y:3},{x:8,y:3},{x:8,y:8},{x:3,y:8}];
-    const polygon=svg2.append('polygon').attr('points',polyPoints.map(d=>[d.x*gridSize,d.y*gridSize].join(',')).join(' '))
-      .attr('fill',color(0.2)).attr('opacity',0)
-      .on('mouseover',()=>{polygon.transition().attr('opacity',0.7);tooltip.style('opacity',1)
-        .text('区域面积：25').attr('x',polyPoints[0].x*gridSize+10).attr('y',polyPoints[0].y*gridSize-10);})
-      .on('mouseout',()=>{polygon.transition().attr('opacity',0.4);tooltip.style('opacity',0);});
-    polygon.transition().duration(700).attr('opacity',0.4);
-    const coverCircle=svg2.append('circle').attr('cx',6*gridSize).attr('cy',6*gridSize).attr('r',0)
-      .attr('fill',color(0.7)).attr('opacity',0.4)
-      .on('mouseover',()=>{coverCircle.transition().attr('opacity',0.7);tooltip.style('opacity',1)
-        .text('覆盖半径：70').attr('x',6*gridSize+10).attr('y',6*gridSize-10);})
-      .on('mouseout',()=>{coverCircle.transition().attr('opacity',0.4);tooltip.style('opacity',0);})
-      .transition().duration(700).attr('r',3*gridSize);
-    const tooltip=svg2.append('text').attr('fill','black').attr('font-size','12px').attr('font-weight','bold').style('opacity',0);
+// 图3 多部位人物（多彩渐变）
+const svg3 = d3.select('#peopleSketch').attr('width',width).attr('height',height);
+// 头部椭圆+渐变
+const gradHead = svg3.append('defs').append('radialGradient').attr('id','headG');
+gradHead.append('stop').attr('offset','20%').attr('stop-color','#f472b6');
+gradHead.append('stop').attr('offset','100%').attr('stop-color','#8b5cf6');
+svg3.append('ellipse')
+  .attr('cx',140).attr('cy',65).attr('rx',38).attr('ry',50)
+  .attr('stroke','#6d28d9').attr('stroke-width',4)
+  .attr('fill','url(#headG)');
+svg3.append('rect')
+  .attr('x',100).attr('y',120).attr('width',80).attr('height',68)
+  .attr('fill','url(#bodyG)')
+  .attr('stroke','#2563eb').attr('stroke-width',3)
+  .attr('rx',14);
+// 身体渐变
+const gradBody = svg3.append('defs').append('linearGradient').attr('id','bodyG').attr('x1','0%').attr('y1','0%').attr('x2','100%').attr('y2','100%');
+gradBody.append('stop').attr('offset','0%').attr('stop-color','#faf089');
+gradBody.append('stop').attr('offset','100%').attr('stop-color','#fbbf24');
+// 面部 – 眼睛嘴巴
+svg3.append('ellipse').attr('cx',130).attr('cy',58).attr('rx',5).attr('ry',2).attr('fill','#222');
+svg3.append('ellipse').attr('cx',150).attr('cy',58).attr('rx',6).attr('ry',3).attr('fill','#222');
+svg3.append('path').attr('d','M132,75 Q140,85 148,75').attr('stroke','#ef4444').attr('fill','none').attr('stroke-width',3)
+  .attr('opacity',.8);
+// 书本叠加
+svg3.append('rect').attr('x',128).attr('y',180).attr('width',24).attr('height',16).attr('fill','#bbf7d0')
+  .attr('stroke','#14b8a6').attr('stroke-width',2).attr('rx',3);
+// 笔（多段线） – 动画画线
+svg3.append('line').attr('x1',156).attr('y1',178).attr('x2',168).attr('y2',200)
+  .attr('stroke','#1e40af').attr('stroke-width',5).attr('stroke-linecap','round')
+  .transition().delay(298).duration(700).attr('x2',130);
+svg3.append('text').attr('x',92).attr('y',36).attr('font-size',13).attr('fill','#16a34a')
+  .text('丰富的人物多形部位');
+svg3.select('ellipse')
+  .on('mouseover',function(){svg3.select('ellipse').transition().attr('rx',48).attr('ry',55);})
+  .on('mouseout',function(){svg3.select('ellipse').transition().attr('rx',38).attr('ry',50);});
 
-    // 图3 人物示意（简线条版）
-    const svg3 = d3.select('#peopleSketch').attr('width',width).attr('height',height);
-    svg3.append('ellipse').attr('cx',140).attr('cy',70).attr('rx',38).attr('ry',50)
-      .attr('stroke','#6366f1').attr('stroke-width',4).attr('fill','none');
-    svg3.append('rect').attr('x',100).attr('y',120).attr('width',80).attr('height',68)
-      .attr('fill','#fee2e2').attr('stroke','#b91c1c').attr('stroke-width',2).attr('rx',14);
-    svg3.append('line').attr('x1',140).attr('y1',120).attr('x2',116).attr('y2',176)
-      .attr('stroke','#64748b').attr('stroke-width',6).attr('stroke-linecap','round')
-      .transition().duration(900).attr('x2',168);
-    svg3.append('text').attr('x',92).attr('y',36).attr('font-size',16).attr('fill','#d97706')
-      .text('D3 人物示意');
-    svg3.select('ellipse')
-      .on('mouseover',function(){d3.select(this).attr('stroke','#fbbf24');})
-      .on('mouseout',function(){d3.select(this).attr('stroke','#6366f1');});
+// 图4 更丰富堆叠面积图
+const svg4 = d3.select('#areaStacked').attr('width',280).attr('height',180);
+const data4=[
+  {year:2011, neural:4, lm:1, lstm:0, transformer:1, gpt: 2},
+  {year:2013, neural:8, lm:2, lstm:2, transformer:0, gpt: 4},
+  {year:2015, neural:10, lm:3, lstm:4, transformer:2, gpt: 7},
+  {year:2017, neural:12, lm:3, lstm:9, transformer:5, gpt: 11},
+  {year:2019, neural:13, lm:4, lstm:8, transformer:10, gpt:15},
+  {year:2021, neural:15, lm:4, lstm:7, transformer:16, gpt:18}
+];
+const keys4=['neural','lm','lstm','transformer','gpt'];
+const colors4=d3.scaleOrdinal().domain(keys4).range(d3.schemeSet2);
+const margin4={left:36,right:11,top:13,bottom:25}, w4=280-margin4.left-margin4.right, h4=180-margin4.top-margin4.bottom;
+const g4=svg4.append('g').attr('transform',`translate(${margin4.left},${margin4.top})`);
+const x4=d3.scaleLinear().domain([2011,2021]).range([0,w4]);
+const y4=d3.scaleLinear().domain([0,65]).range([h4,0]);
+const stack4=d3.stack().keys(keys4);
+const area4=d3.area().x(d=>x4(d.data.year)).y0(d=>y4(d[0])).y1(d=>y4(d[1]));
+g4.append('g').attr('transform',`translate(0,${h4})`).call(d3.axisBottom(x4).ticks(6).tickFormat(d3.format('d')));
+g4.append('g').call(d3.axisLeft(y4).ticks(5));
+g4.selectAll('.layer')
+  .data(stack4(data4)).enter().append('path')
+  .attr('class','layer').attr('fill',d=>colors4(d.key))
+  .attr('d',area4.y0(y4(0)).y1(y4(0)))
+  .attr('opacity',0.8)
+  .transition().duration(1300).attr('d',area4);
+g4.selectAll('.layer')
+  .on('mouseover',function(e,d){d3.select(this).attr('opacity',1);
+    g4.append('text').attr('id','tip').attr('x',w4/2).attr('y',9).attr('text-anchor','middle')
+    .attr('font-size',14).attr('fill',colors4(d.key)).text(d.key); })
+  .on('mouseout',function(){d3.select(this).attr('opacity',0.8);g4.select('#tip').remove();});
+keys4.forEach((k,i)=>{
+  svg4.append('rect').attr('x',204).attr('y',13+15*i).attr('width',13).attr('height',11).attr('fill',colors4(k)).attr('opacity',.95);
+  svg4.append('text').attr('x',220).attr('y',22+15*i).attr('font-size',11).attr('fill','#222').text(k);
+});
+// 随机生成若干散点（强调局部峰值）
+g4.selectAll('circle.peak').data(data4)
+  .enter().append('circle')
+  .attr('class','peak')
+  .attr('cx',d=>x4(d.year))
+  .attr('cy',d=>y4(d3.max(keys4.map(f=>d[f]))))
+  .attr('r',0)
+  .attr('fill','#facc15')
+  .attr('stroke','#7c3aed').attr('stroke-width',2)
+  .transition().delay((d,i)=>i*230).duration(500).attr('r',7);
 
-    // 图4 堆叠面积时间序列
-    const svg4 = d3.select('#areaStacked').attr('width',280).attr('height',180);
-    const data=[{year:2011,neural:4,lm:1,lstm:0,transformer:0},{year:2013,neural:8,lm:2,lstm:1,transformer:0},{year:2015,neural:11,lm:3,lstm:3,transformer:1},{year:2017,neural:12,lm:3,lstm:7,transformer:3},{year:2019,neural:14,lm:3,lstm:8,transformer:5},{year:2021,neural:14,lm:3,lstm:8,transformer:8}];
-    const keys=['neural','lm','lstm','transformer'];
-    const colors=d3.scaleOrdinal().domain(keys).range(['#93c5fd','#fde68a','#6ee7b7','#f9a8d4']);
-    const margin={left:34,right:12,top:10,bottom:28}, w=280-margin.left-margin.right, h=180-margin.top-margin.bottom;
-    const g=svg4.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
-    const x=d3.scaleLinear().domain([2011,2021]).range([0,w]);
-    const y=d3.scaleLinear().domain([0,40]).range([h,0]);
-    const stack=d3.stack().keys(keys);
-    const area=d3.area().x(d=>x(d.data.year)).y0(d=>y(d[0])).y1(d=>y(d[1]));
-    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(6).tickFormat(d3.format('d')));
-    g.append('g').call(d3.axisLeft(y).ticks(5));
-    g.selectAll('.layer').data(stack(data)).enter().append('path')
-      .attr('class','layer').attr('fill',d=>colors(d.key))
-      .attr('d',area.y0(y(0)).y1(y(0)))
-      .transition().duration(900).attr('d',area);
-    g.selectAll('.layer')
-      .on('mouseover',function(){d3.select(this).attr('opacity',0.7);})
-      .on('mouseout',function(){d3.select(this).attr('opacity',1);});
-    keys.forEach((k,i)=>{
-      svg4.append('rect').attr('x',204).attr('y',10+16*i).attr('width',12).attr('height',12).attr('fill',colors(k));
-      svg4.append('text').attr('x',218).attr('y',20+16*i).text(k).attr('font-size',10);
-    });
-
-    // 图5 网络关系图
-    const nodes=[{id:'A',group:1,label:'protest'},{id:'B',group:2,label:'earthquake'},{id:'C',group:1,label:'tweet1'},{id:'D',group:2,label:'tweet2'},{id:'E',group:1,label:'tweet3'}];
-    const links=[{source:'A',target:'C'},{source:'A',target:'E'},{source:'B',target:'D'},{source:'B',target:'A'}];
-    const colorNet=d3.scaleOrdinal().domain([1,2]).range(["#f59e42","#60a5fa"]);
-    const svg5=d3.select('#networkGraph').attr('width',width).attr('height',height);
-    const simulation=d3.forceSimulation(nodes)
-      .force("link",d3.forceLink(links).id(d=>d.id).distance(62))
-      .force("charge",d3.forceManyBody().strength(-62))
-      .force("center",d3.forceCenter(width/2,height/2));
-    const linkG=svg5.append("g").attr("stroke",'#888').attr("stroke-width",2);
-    const link=linkG.selectAll("line").data(links).enter().append("line");
-    const nodeG=svg5.append("g");
-    const node=nodeG.selectAll("circle").data(nodes).enter().append("circle")
-      .attr("r",13).attr("fill",d=>colorNet(d.group)).attr("stroke","#374151").attr("stroke-width",2)
-      .call(d3.drag().on('start',dragstarted).on('drag',dragged).on('end',dragended));
-    node.on('mouseover',function(e,d){d3.select(this).attr('stroke','#ef4444').attr('stroke-width',5);
-      svg5.append('text').attr('id','nodeTip').attr('x',d.x+23).attr('y',d.y).attr('fill','#222').attr('font-size',11).text(d.label);})
-      .on('mouseout',function(e,d){d3.select(this).attr('stroke','#374151').attr('stroke-width',2);svg5.select('#nodeTip').remove();});
-    const labels=nodeG.selectAll('text').data(nodes).enter().append('text')
-      .attr('text-anchor','middle').attr('dy',4)
-      .attr('font-size',8).attr('pointer-events','none').attr('fill','#222').text(d=>d.label);
-    simulation.on('tick',()=>{
-      link.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
-      node.attr('cx',d=>d.x).attr('cy',d=>d.y);
-      labels.attr('x',d=>d.x).attr('y',d=>d.y);
-    });
-    function dragstarted(event,d){if(!event.active)simulation.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;}
-    function dragged(event,d){d.fx=event.x;d.fy=event.y;}
-    function dragended(event,d){if(!event.active)simulation.alphaTarget(0);d.fx=null;d.fy=null;}
-  </script>
+// 图5 炫彩网络图
+const svg5=d3.select('#networkGraph').attr('width',width).attr('height',height);
+const nset=['A','B','C','D','E','F','G','H','I','J'];
+const nodes5 = nset.map((id,i)=>({id, group:i%4+1, weight:Math.random()>0.4?1+3*Math.random():1, label:id+((i%3==0)?'-重点':'')}));
+const links5 = [
+  {source:'A',target:'C'}, {source:'A',target:'G'}, {source:'A',target:'J'},
+  {source:'B',target:'D'}, {source:'C',target:'F'}, {source:'C',target:'B'},
+  {source:'F',target:'I'}, {source:'D',target:'A'}, {source:'E',target:'I'},
+  {source:'G',target:'H'}, {source:'H',target:'E'}, {source:'H',target:'A'}
+];
+const colorNet5=d3.scaleOrdinal().domain([1,2,3,4]).range(['#fbbf24','#2563eb','#d946ef','#10b981']);
+const simulation5=d3.forceSimulation(nodes5)
+  .force('link',d3.forceLink(links5).id(d=>d.id).distance(44))
+  .force('charge',d3.forceManyBody().strength(-88))
+  .force('center',d3.forceCenter(width/2,height/2));
+const linkG5=svg5.append('g').attr('stroke','#888').attr('stroke-width',2);
+const link5=linkG5.selectAll('line').data(links5).enter().append('line')
+  .attr('stroke',(d,i)=>d3.interpolateSpectral(i/links5.length))
+  .attr('stroke-dasharray',(d,i)=>(i%3==0?"6,7":null));
+const nodeG5=svg5.append('g');
+const node5=nodeG5.selectAll('polygon').data(nodes5).enter().append('polygon')
+  .attr('points', d=>Array.from({length:6},(_,i)=>{
+    let a=Math.PI*2*i/6-0.18*d.weight;
+    let R=12+(d.weight*6);
+    return [R*Math.cos(a), R*Math.sin(a)].join(',');
+  }).join(' '))
+  .attr('fill',d=>colorNet5(d.group))
+  .attr('stroke','#0f172a').attr('stroke-width',d=>d.weight)
+  .call(d3.drag().on('start',dragstarted).on('drag',dragged).on('end',dragended));
+node5.on('mouseover',function(e,d){
+    d3.select(this).attr('stroke','#f59e42').attr('stroke-width',7);
+    svg5.append('text').attr('id','nodeTip5').attr('x',d.x+32).attr('y',d.y).attr('fill','#d97706').attr('font-size',11).text(d.label);
+  })
+  .on('mouseout',function(e,d){
+    d3.select(this).attr('stroke','#0f172a').attr('stroke-width',d.weight);
+    svg5.select('#nodeTip5').remove();
+  });
+const labels5=nodeG5.selectAll('text').data(nodes5).enter().append('text')
+  .attr('text-anchor','middle').attr('dy',3).attr('font-size',9).attr('pointer-events','none').attr('fill','#222').text(d=>d.id);
+simulation5.on('tick',()=>{
+  link5.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+  node5.attr('transform',d=>`translate(${d.x},${d.y})`);
+  labels5.attr('x',d=>d.x).attr('y',d=>d.y);
+});
+function dragstarted(event,d){if(!event.active)simulation5.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;}
+function dragged(event,d){d.fx=event.x;d.fy=event.y;}
+function dragended(event,d){if(!event.active)simulation5.alphaTarget(0);d.fx=null;d.fy=null;}
+</script>
 </body>
 </html>
-
