@@ -1,383 +1,235 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>D3.js Advanced 5-Chart Demo</title>
-  <style>
-    html, body {
-      height: 100%; margin: 0; padding: 0; box-sizing: border-box;
-      font-family: 'Segoe UI', 'Arial', sans-serif;
-      background: #f4f7fb;
-    }
-    .dashboard {
-      width: 100vw; max-width: 1600px; margin: 30px auto;
-      display: flex; flex-direction: column; align-items: center;
-    }
-    .chart-row {
-      display: flex;
-      gap: 30px;
-      justify-content: center;
-      align-items: flex-start;
-      width: 100%;
-    }
-    .chart-block {
-      width: 310px; min-width: 250px; max-width: 330px;
-      box-sizing: border-box;
-      padding: 16px 10px 18px 10px;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 28px 0 #dae1eb66;
-      overflow: hidden;
-      text-align: center;
-      display: flex; flex-direction: column; align-items: center;
-    }
-    .chart-block h3 {
-      margin: 0 0 14px 0;
-      font-size: 18px;
-      color: #395886;
-      letter-spacing: 0.04em;
-      font-weight: 600;
-    }
-    svg {
-      display: block;
-      margin: 0 auto;
-      background: #f8fafc;
-      border-radius: 8px;
-      box-shadow: 0 1px 6px #cbd5e122;
-      width: 100%;
-      height: auto;
-      max-width: 98%;
-    }
-    @media (max-width: 1560px) {
-      .chart-block { width: 20vw; min-width: 180px; }
-      .chart-row { gap: 10px; }
-    }
-    @media (max-width: 900px) {
-      .chart-row { flex-direction: column; gap: 34px; }
-      .chart-block { width: 80vw; min-width: 180px; }
-      svg { min-width: 150px; }
-    }
-  </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Week 8 — Five Charts (D3, Venn + Chord)</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root{--bg:#fbfbfb;--ink:#0f172a;--muted:#64748b;--grid:#e2e8f0;--accent:#2563eb}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    header{padding:18px 14px;border-bottom:1px solid var(--grid)}
+    h1{font-size:20px;margin:0 0 6px}
+    p.caption{margin:2px 0 0;color:var(--muted)}
+    .wrap{max-width:980px;margin:0 auto;padding:14px}
+    section{background:#fff;border:1px solid var(--grid);border-radius:14px;padding:14px 14px 8px;margin:14px 0;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+    h2{font-size:16px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+    .pill{display:inline-block;padding:2px 8px;border:1px solid var(--grid);border-radius:999px;color:var(--muted);font-size:12px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    button,input[type="range"]{font:inherit;border:1px solid var(--grid);background:#fff;border-radius:999px;padding:4px 10px;cursor:pointer}
+    input[type="range"]{padding:0 6px;border-radius:6px}
+    svg{width:100%;height:auto;display:block}
+    .grid line{stroke:var(--grid)}
+    .axis path,.axis line{stroke:#cbd5e1}
+    .legend{font-size:12px;fill:var(--muted)}
+    .note{font-size:12px;color:var(--muted);margin:6px 0 0}
+    .tip{position:fixed;pointer-events:none;background:#111827;color:#fff;padding:6px 8px;border-radius:6px;font-size:12px;opacity:0;transform:translate(-50%,-140%)}
+    .fade{opacity:.15}
+  </style>
 </head>
 <body>
-<div class="dashboard">
-  <div class="chart-row">
-    <div class="chart-block">
-      <h3>Spatial Path (Complex)</h3>
-      <svg id="trajChart" width="280" height="280" viewBox="0 0 280 280"></svg>
-    </div>
-    <div class="chart-block">
-      <h3>Zones & Multi-Coverage</h3>
-      <svg id="spaceCoverage" width="280" height="280" viewBox="0 0 280 280"></svg>
-    </div>
-    <div class="chart-block">
-      <h3>Stylized Character</h3>
-      <svg id="peopleSketch" width="280" height="280" viewBox="0 0 280 280"></svg>
-    </div>
-    <div class="chart-block">
-      <h3>Colorful Area Stacking</h3>
-      <svg id="areaStacked" width="280" height="180" viewBox="0 0 280 180"></svg>
-    </div>
-    <div class="chart-block">
-      <h3>Vivid Network Graph</h3>
-      <svg id="networkGraph" width="280" height="280" viewBox="0 0 280 280"></svg>
-    </div>
-  </div>
-</div>
-<script>
-// Chart 1: Spatial Path, Advanced Gradients, Rich Zones
-const gw = 23, gnum = 12, W = 280, H = 280;
-const pDots = Array.from({length: 8}, (_,i)=>({x:2+i, y:2+Math.round(3*Math.sin(i)), label:i===0?'start':(i===7?'end':null)}));
-const zones = [
-  [ {x:4,y:4},{x:8,y:5},{x:7,y:9},{x:3,y:8} ],
-  [ {x:1,y:7},{x:4,y:7},{x:3,y:11},{x:1,y:11} ]
-];
-const svg1 = d3.select('#trajChart');
-svg1.append('g').selectAll('line')
-  .data(d3.range(gnum+1)).enter().append('line')
-  .attr('x1',d=>d*gw).attr('y1',0).attr('x2',d=>d*gw).attr('y2',H).attr('stroke','#cbd5e1');
-svg1.append('g').selectAll('l2')
-  .data(d3.range(gnum+1)).enter().append('line')
-  .attr('y1',d=>d*gw).attr('x1',0).attr('y2',d=>d*gw).attr('x2',W).attr('stroke','#cbd5e1');
-zones.forEach((z,i) => {
-  svg1.append('polygon')
-    .attr('points', z.map(d=>[d.x*gw,d.y*gw].join(",")).join(" ") )
-    .attr('fill',d3.interpolateRainbow(i/2 + 0.08))
-    .attr('opacity',0.28)
-    .on('mouseover',function() { d3.select(this).attr('opacity',0.55); })
-    .on('mouseout',function() { d3.select(this).attr('opacity',0.28); });
-});
-svg1.append('defs').append('marker')
-  .attr('id','arrowA')
-  .attr('viewBox','0 -5 10 10')
-  .attr('refX',6).attr('refY',0)
-  .attr('markerWidth',8)
-  .attr('markerHeight',8)
-  .attr('orient','auto')
-  .append('path')
-  .attr('d','M0,-5L10,0L0,5')
-  .attr('fill','#d97706');
-const grad = svg1.append('defs').append('linearGradient')
-  .attr('id','rainbowGradient')
-  .attr('x1','0%').attr('y1','0%').attr('x2','100%').attr('y2','100%');
-for(let i=0;i<pDots.length;++i){
-  grad.append('stop').attr('offset',(i/(pDots.length-1)*100)+"%")
-    .attr('stop-color', d3.interpolateRainbow(i/(pDots.length-1)));
-}
-const rainbowLine = d3.line().x(d=>d.x*gw).y(d=>d.y*gw);
-const trajPath = svg1.append('path')
-  .attr('d', rainbowLine(pDots))
-  .attr('fill','none')
-  .attr('stroke','url(#rainbowGradient)')
-  .attr('stroke-width', 4)
-  .attr('marker-end','url(#arrowA)')
-  .attr('stroke-dasharray',function(){return this.getTotalLength();})
-  .attr('stroke-dashoffset',function(){return this.getTotalLength();});
-trajPath.transition().duration(1100).attr('stroke-dashoffset',0);
-svg1.selectAll('rect.point').data(pDots)
-  .enter().append('rect')
-    .attr('class','point')
-    .attr('x',d=>d.x*gw-7).attr('y',d=>d.y*gw-7)
-    .attr('width',d=>d.label?14:0)
-    .attr('height',d=>d.label?14:0)
-    .attr('fill',d=>d.label==='start'?'#77e6d8':d.label==='end'?'#ee97a4':'none')
-    .attr('stroke',d=>d.label?'#78716c':'none').attr('stroke-width',d=>d.label?2:0);
-svg1.selectAll('circle.dot').data(pDots).enter().append('circle')
-  .attr('class','dot').attr('cx',d=>d.x*gw).attr('cy',d=>d.y*gw).attr('r',7)
-  .attr('fill',(d,i)=>d3.interpolateRainbow(i/(pDots.length-1)))
-  .attr('opacity', 0.83)
-  .on('mouseover',function(e,d){
-    d3.select(this).transition().attr('r',11);
-    svg1.append('text')
-      .attr('id','tip')
-      .attr('x',d.x*gw+10)
-      .attr('y',d.y*gw-10)
-      .attr('fill','#111')
-      .attr('font-size',13)
-      .attr('font-weight',600)
-      .text(d.label?`${d.label} (${d.x},${d.y})`:`(${d.x},${d.y})`);
-  })
-  .on('mouseout',function(e,d){
-    d3.select(this).transition().attr('r',7);
-    svg1.select('#tip').remove();
-  });
+  <header class="wrap">
+    <h1>Week 8 — Five Charts (revised)</h1>
+    <p class="caption">Per your request: #1 switched to a 3‑set Venn (like the reference), ALL text is in English, and the annotation text under #5 is removed. The rest (#2/#3/#4) stay interactive.</p>
+  </header>
 
-// Chart 2: Multi-Zone, Multi-Coverage
-const svg2 = d3.select('#spaceCoverage');
-svg2.append('g').selectAll('line')
-  .data(d3.range(gnum+1)).enter().append('line')
-  .attr('x1',d=>d*gw).attr('y1',0).attr('x2',d=>d*gw).attr('y2',H).attr('stroke','#e5e7eb');
-svg2.append('g').selectAll('line')
-  .data(d3.range(gnum+1)).enter().append('line')
-  .attr('y1',d=>d*gw).attr('x1',0).attr('y2',d=>d*gw).attr('x2',W).attr('stroke','#e5e7eb');
-const polys = [
-  [ {x:2,y:3},{x:7,y:4},{x:6,y:9},{x:1,y:8} ],
-  [ {x:8,y:2},{x:11,y:2},{x:11,y:6},{x:8,y:7} ]
-];
-polys.forEach((zone,i)=>{
-  svg2.append('polygon').attr('points',zone.map(d=>[d.x*gw,d.y*gw].join(",")).join(' '))
-    .attr('fill',d3.interpolateCool(i/2+0.3)).attr('opacity',.33)
-    .on('mouseover', function(){d3.select(this).attr('opacity',0.7);})
-    .on('mouseout', function(){d3.select(this).attr('opacity',.33);});
-});
-const circles = [
-  {cx:7*gw, cy:6*gw, r:3*gw, c:'#fdba74'},
-  {cx:10*gw, cy:4*gw, r:2*gw, c:'#7dd3fc'}
-];
-circles.forEach((d,i)=>{
-  svg2.append('circle')
-    .attr('cx',d.cx).attr('cy',d.cy).attr('r',0)
-    .attr('fill','url(#radial'+i+')')
-    .attr('opacity',0.72)
-    .transition().delay(300*i).duration(800).attr('r',d.r);
-  const grad2 = svg2.append('defs').append('radialGradient')
-    .attr('id','radial'+i);
-  grad2.append('stop').attr('offset','0%').attr('stop-color',d.c);
-  grad2.append('stop').attr('offset','75%').attr('stop-color','white').attr('stop-opacity',0);
-});
-const pointsArr=[ {x:3, y:4, v:13}, {x:8, y:3, v:35},{x:10,y:6, v:57} ];
-svg2.selectAll('star')
-  .data(pointsArr).enter().append('polygon')
-  .attr('points', d => Array.from({length:5},(_,i)=>{
-    let a = Math.PI*2*i/5-0.5;
-    let R=(i%2==0?10:4);
-    return [d.x*gw+Math.cos(a)*R, d.y*gw+Math.sin(a)*R].join(',');
-  }).join(' '))
-  .attr('fill',(d,i)=>d3.interpolateTurbo(d.v/60))
-  .attr('stroke','#555').attr('opacity',.92)
-  .on('mouseover',function(e,d){d3.select(this).attr('fill','#a21caf').attr('stroke','#eab308');})
-  .on('mouseout',function(e,d){d3.select(this).attr('fill',d3.interpolateTurbo(d.v/60)).attr('stroke','#555');});
+  <main class="wrap">
+    <!-- Chart 1: 3-set Venn (static, Roman numerals) -->
+    <section>
+      <h2>Chart 1 · Venn <span class="pill">3 sets + animation</span></h2>
+      <div id="venn"></div>
+    </section>
 
-// Chart 3: Stylized Character (Arknights Ifrit inspired)
-const svg3 = d3.select("#peopleSketch").attr("width",280).attr("height",280);
-svg3.append("ellipse") // Glow halo
-  .attr("cx",140).attr("cy",140).attr("rx",97).attr("ry",91)
-  .attr("fill", "url(#bgHalo)").attr("opacity",0.4);
-const haloG = svg3.append("defs").append("radialGradient").attr("id","bgHalo");
-haloG.append("stop").attr("offset","0%").attr("stop-color","#f5e8fa");
-haloG.append("stop").attr("offset","80%").attr("stop-color","#fbbf24");
-haloG.append("stop").attr("offset","99%").attr("stop-color","white").attr("stop-opacity",0);
-svg3.append("ellipse")
-  .attr("cx",140).attr("cy",115).attr("rx",44).attr("ry",56)
-  .attr("fill","url(#skinGrad3)").attr("stroke","#e2ccc2").attr("stroke-width",2.3);
-const gSkin3 = svg3.append("defs").append("radialGradient").attr("id","skinGrad3");
-gSkin3.append("stop").attr("offset","0%").attr("stop-color","#fae7d5");
-gSkin3.append("stop").attr("offset","97%").attr("stop-color","#ecd9e2");
-svg3.append("ellipse") // Left ear/flame-like horn
-  .attr("cx",69).attr("cy",113).attr("rx",15).attr("ry",12)
-  .attr("fill","url(#earGrad3)").attr("stroke","#8c5aaa").attr("stroke-width","1.8");
-svg3.append("ellipse")
-  .attr("cx",210).attr("cy",113).attr("rx",15).attr("ry",12)
-  .attr("fill","url(#earGrad3)").attr("stroke","#8c5aaa").attr("stroke-width","1.8");
-const earG3 = svg3.append("defs").append("radialGradient").attr("id","earGrad3");
-earG3.append("stop").attr("offset","0%").attr("stop-color","#ede7f6");
-earG3.append("stop").attr("offset","99%").attr("stop-color","#c5aafc");
-svg3.append("ellipse") // Hair A
-  .attr("cx",110).attr("cy",60).attr("rx",30).attr("ry",18)
-  .attr("fill","url(#hairGradA)").attr("opacity",0.6);
-svg3.append("ellipse") // Hair B
-  .attr("cx",170).attr("cy",54).attr("rx",35).attr("ry",20)
-  .attr("fill","url(#hairGradB)").attr("opacity",0.62);
-const hA = svg3.append("defs").append("linearGradient").attr("id","hairGradA").attr("x1","0%"),hB = svg3.append("defs").append("linearGradient").attr("id","hairGradB");
-hA.append("stop").attr("offset","0%").attr("stop-color","#eaebf7"); hA.append("stop").attr("offset","90%").attr("stop-color","#a78bfa");
-hB.append("stop").attr("offset","0%").attr("stop-color","#ffd5e7"); hB.append("stop").attr("offset","95%").attr("stop-color","#a3eaff");
-svg3.append("ellipse") // Hat
-  .attr("cx",140).attr("cy",47).attr("rx",39).attr("ry",11)
-  .attr("fill","#6d4f96").attr("opacity",0.8);
-svg3.append("ellipse") // Left eye
-  .attr("cx",120).attr("cy",132)
-  .attr("rx",7).attr("ry",5)
-  .attr("fill","#5b4ad6").attr("stroke","#222").attr("stroke-width",1.2);
-svg3.append("ellipse") // Right eye
-  .attr("cx",160).attr("cy",132)
-  .attr("rx",7).attr("ry",5)
-  .attr("fill","#ed8cab").attr("stroke","#222").attr("stroke-width",1.2);
-svg3.append("line") // Left brow
-  .attr("x1",112).attr("y1",123).attr("x2",127).attr("y2",121)
-  .attr("stroke","#7c3aed").attr("stroke-width",1.7);
-svg3.append("line") // Right brow
-  .attr("x1",153).attr("y1",121).attr("x2",168).attr("y2",123)
-  .attr("stroke","#ed8cab").attr("stroke-width",1.7);
-svg3.append("path") // Mouth
-  .attr("d","M122,144 Q140,157 158,144")
-  .attr("stroke","#e597a2").attr("stroke-width",1.5)
-  .attr("fill","none");
-svg3.append("rect") // Staff
-  .attr("x",133).attr("y",171).attr("width",13).attr("height",41).attr("fill","url(#stickGrad3)").attr("rx",5).attr("opacity",0.72);
-const sG = svg3.append("defs").append("linearGradient").attr("id","stickGrad3");
-sG.append("stop").attr("offset","0%").attr("stop-color","#fbbf24");sG.append("stop").attr("offset","99%").attr("stop-color","#fb7185");
-svg3.append("ellipse") // Staff fireball
-  .attr("cx",140).attr("cy",171).attr("rx",11).attr("ry",6)
-  .attr("fill","url(#fireGrad3)").attr("opacity",0.59);
-const fG = svg3.append("defs").append("radialGradient").attr("id","fireGrad3");
-fG.append("stop").attr("offset","0%").attr("stop-color","#fde68a");fG.append("stop").attr("offset","100%").attr("stop-color","#fb7185");
-// Cape
-svg3.append("path")
-  .attr("d","M69,179 Q121,255 210,179 Q196,249 140,260 Q82,243 69,179 Z")
-  .attr("fill","url(#cloakGrad3)")
-  .attr("stroke","#7c3aed").attr("stroke-width",2.4).attr("opacity",0.7);
-const cg = svg3.append("defs").append("linearGradient").attr("id","cloakGrad3");
-cg.append("stop").attr("offset","0%") .attr("stop-color","#a5f3fc");
-cg.append("stop").attr("offset","100%") .attr("stop-color","#fbbf24");
-svg3.append("text").attr("x",87).attr("y",22).attr("font-size",14).attr("fill","#535b75")
-  .text("Ifrit (stylized demo)");
-svg3.select('ellipse')
-  .on('mouseover',function(){d3.select(this).transition().duration(370).attr('rx',57).attr('ry',66).attr('fill','#fb7185');})
-  .on('mouseout',function(){d3.select(this).transition().duration(380).attr('rx',97).attr('ry',91).attr('fill','url(#bgHalo)');});
+    <!-- Chart 2: Route (Grid + Path) with drawn path animation + mover speed control -->
+    <section>
+      <h2>Chart 2 · Optimised Route <span class="pill">grid + animated path</span></h2>
+      <div class="toolbar">
+        <label>Speed <input id="route-speed" type="range" min="1" max="10" value="5"></label>
+        <button id="route-shuffle">Randomise Stops</button>
+      </div>
+      <div id="route"></div>
+    </section>
 
-// Chart 4: Enhanced Area Stacking
-const svg4 = d3.select('#areaStacked').attr('width',280).attr('height',180);
-const data4=[
-  {year:2011, neural:4, lm:1, lstm:0, transformer:1, gpt: 2},
-  {year:2013, neural:8, lm:2, lstm:2, transformer:0, gpt: 4},
-  {year:2015, neural:10, lm:3, lstm:4, transformer:2, gpt: 7},
-  {year:2017, neural:12, lm:3, lstm:9, transformer:5, gpt: 11},
-  {year:2019, neural:13, lm:4, lstm:8, transformer:10, gpt:15},
-  {year:2021, neural:15, lm:4, lstm:7, transformer:16, gpt:18}
-];
-const keys4=['neural','lm','lstm','transformer','gpt'];
-const colors4=d3.scaleOrdinal().domain(keys4).range(d3.schemeSet2);
-const margin4={left:36,right:11,top:13,bottom:25}, w4=280-margin4.left-margin4.right, h4=180-margin4.top-margin4.bottom;
-const g4=svg4.append('g').attr('transform',`translate(${margin4.left},${margin4.top})`);
-const x4=d3.scaleLinear().domain([2011,2021]).range([0,w4]);
-const y4=d3.scaleLinear().domain([0,65]).range([h4,0]);
-const stack4=d3.stack().keys(keys4);
-const area4=d3.area().x(d=>x4(d.data.year)).y0(d=>y4(d[0])).y1(d=>y4(d[1]));
-g4.append('g').attr('transform',`translate(0,${h4})`).call(d3.axisBottom(x4).ticks(6).tickFormat(d3.format('d')));
-g4.append('g').call(d3.axisLeft(y4).ticks(5));
-g4.selectAll('.layer')
-  .data(stack4(data4)).enter().append('path')
-  .attr('class','layer').attr('fill',d=>colors4(d.key))
-  .attr('d',area4.y0(y4(0)).y1(y4(0)))
-  .attr('opacity',0.82)
-  .transition().duration(1100).attr('d',area4);
-g4.selectAll('.layer')
-  .on('mouseover',function(e,d){d3.select(this).attr('opacity',1);
-    g4.append('text').attr('id','tip').attr('x',w4/2).attr('y',12).attr('text-anchor','middle')
-    .attr('font-size',14).attr('fill',colors4(d.key)).text(d.key); })
-  .on('mouseout',function(){d3.select(this).attr('opacity',0.82);g4.select('#tip').remove();});
-keys4.forEach((k,i)=>{
-  svg4.append('rect').attr('x',207).attr('y',13+15*i).attr('width',12).attr('height',10).attr('fill',colors4(k)).attr('opacity',.97);
-  svg4.append('text').attr('x',223).attr('y',22+15*i).attr('font-size',9.5).attr('fill','#27272a').text(k);
-});
-g4.selectAll('circle.peak').data(data4)
-  .enter().append('circle')
-  .attr('class','peak')
-  .attr('cx',d=>x4(d.year))
-  .attr('cy',d=>y4(d3.max(keys4.map(f=>d[f]))))
-  .attr('r',0)
-  .attr('fill','#facc15')
-  .attr('stroke','#7c3aed').attr('stroke-width',2)
-  .transition().delay((d,i)=>i*220).duration(400).attr('r',8);
+    <!-- Chart 3: Frequency (Bars) with sort / shuffle and hover value -->
+    <section>
+      <h2>Chart 3 · Frequency <span class="pill">bars + sort</span></h2>
+      <div class="toolbar">
+        <button id="bars-sort">Sort Desc</button>
+        <button id="bars-shuffle">Shuffle</button>
+      </div>
+      <div id="freq"></div>
+    </section>
 
-// Chart 5: Vivid Network Graph
-const svg5=d3.select('#networkGraph').attr('width',W).attr('height',H);
-const nset=['A','B','C','D','E','F','G','H','I','J'];
-const nodes5 = nset.map((id,i)=>({id, group:i%4+1, weight:Math.random()>0.4?1+3*Math.random():1, label:id+((i%3==0)?'-Key':'')}));
-const links5 = [
-  {source:'A',target:'C'},{source:'A',target:'G'},{source:'A',target:'J'},
-  {source:'B',target:'D'},{source:'C',target:'F'},{source:'C',target:'B'},
-  {source:'F',target:'I'},{source:'D',target:'A'},{source:'E',target:'I'},
-  {source:'G',target:'H'},{source:'H',target:'E'},{source:'H',target:'A'}
-];
-const colorNet5=d3.scaleOrdinal().domain([1,2,3,4]).range(['#fbbf24','#2563eb','#d946ef','#10b981']);
-const simulation5=d3.forceSimulation(nodes5)
-  .force('link',d3.forceLink(links5).id(d=>d.id).distance(44))
-  .force('charge',d3.forceManyBody().strength(-88))
-  .force('center',d3.forceCenter(W/2,H/2));
-const linkG5=svg5.append('g').attr('stroke','#888').attr('stroke-width',2);
-const link5=linkG5.selectAll('line').data(links5).enter().append('line')
-  .attr('stroke',(d,i)=>d3.interpolateSpectral(i/links5.length))
-  .attr('stroke-dasharray',(d,i)=>(i%3==0?'6,7':null));
-const nodeG5=svg5.append('g');
-const node5=nodeG5.selectAll('polygon').data(nodes5).enter().append('polygon')
-  .attr('points', d=>Array.from({length:6},(_,i)=>{
-    let a=Math.PI*2*i/6-0.18*d.weight;
-    let R=12+(d.weight*6);
-    return [R*Math.cos(a), R*Math.sin(a)].join(',');
-  }).join(' '))
-  .attr('fill',d=>colorNet5(d.group))
-  .attr('stroke','#0f172a').attr('stroke-width',d=>d.weight)
-  .call(d3.drag().on('start',dragstarted).on('drag',dragged).on('end',dragended));
-node5.on('mouseover',function(e,d){
-    d3.select(this).attr('stroke','#f59e42').attr('stroke-width',7);
-    svg5.append('text').attr('id','nodeTip5').attr('x',d.x+32).attr('y',d.y).attr('fill','#d97706').attr('font-size',11).text(d.label);
-  })
-  .on('mouseout',function(e,d){
-    d3.select(this).attr('stroke','#0f172a').attr('stroke-width',d.weight);
-    svg5.select('#nodeTip5').remove();
-  });
-const labels5=nodeG5.selectAll('text').data(nodes5).enter().append('text')
-  .attr('text-anchor','middle').attr('dy',3).attr('font-size',9).attr('pointer-events','none').attr('fill','#222').text(d=>d.id);
-simulation5.on('tick',()=>{
-  link5.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
-  node5.attr('transform',d=>`translate(${d.x},${d.y})`);
-  labels5.attr('x',d=>d.x).attr('y',d=>d.y);
-});
-function dragstarted(event,d){if(!event.active)simulation5.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;}
-function dragged(event,d){d.fx=event.x;d.fy=event.y;}
-function dragended(event,d){if(!event.active)simulation5.alphaTarget(0);d.fx=null;d.fy=null;}
-</script>
+    <!-- Chart 4: Math (sin/cos) with draggable phase handle -->
+    <section>
+      <h2>Chart 4 · Math Plots <span class="pill">sin & cos + φ control</span></h2>
+      <div class="toolbar">
+        <label>Phase φ <input id="phase" type="range" min="-314" max="314" step="1" value="0"></label>
+      </div>
+      <div id="math"></div>
+    </section>
+
+    <!-- Chart 5: Chord Diagram (hover fade, random weights) -->
+    <section>
+      <h2>Chart 5 · Chord Diagram <span class="pill">matrix → flows</span></h2>
+      <div class="toolbar">
+        <button id="chord-random">Random Weights</button>
+        <button id="chord-reset">Reset</button>
+      </div>
+      <div id="chord"></div>
+    </section>
+  </main>
+
+  <div class="tip" id="tip"></div>
+
+  <script>
+    const TBL = d3.schemeTableau10;
+    const tip = d3.select('#tip');
+    function showTip(html, [x,y]){ tip.style('opacity',1).html(html).style('left',x+15+'px').style('top',y+'px'); }
+    function hideTip(){ tip.style('opacity',0); }
+
+    function mountSVG(sel, {w=820, h=420, margin={top:24,right:24,bottom:40,left:44}}={}){
+      const width = w, height = h;
+      const svg = d3.select(sel).append('svg')
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('preserveAspectRatio', 'xMidYMid meet');
+      const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+      const inner = {w: width - margin.left - margin.right, h: height - margin.top - margin.bottom};
+      return {svg, g, inner, margin, width, height};
+    }
+
+    // ------- 1) Venn (3 sets, Roman numerals, English labels, animated) -------
+    (function(){
+      const {svg, g, inner, width, height} = mountSVG('#venn');
+      const R = Math.min(inner.w, inner.h)*0.24; // responsive radius
+      const cx = width/2, cy = height/2 + R*0.05;
+      const A = {x: cx - R*0.95, y: cy + R*0.08, name:'Delete',  color:'#c7c5eb'};
+      const C = {x: cx + R*0.95, y: cy + R*0.08, name:'Rewrite', color:'#ecd889'};
+      const B = {x: cx,           y: cy - R*0.78, name:'Replace', color:'#cdb8be'}; // top
+      const centers = [A,C,B];
+
+      // circles with entry animation
+      const cg = g.append('g').attr('opacity',0.95);
+      const circles = cg.selectAll('circle').data(centers).enter().append('circle')
+        .attr('cx', d=>d.x).attr('cy', d=>d.y)
+        .attr('r', 0)
+        .attr('fill', d=>d.color).attr('fill-opacity',0.35)
+        .attr('stroke','#94a3b8').attr('stroke-width',1.2)
+        .transition().delay((d,i)=> i*120).duration(700).ease(d3.easeCubicOut)
+        .attr('r', R);
+
+      // outer labels
+      g.append('text').attr('x', B.x).attr('y', B.y - R - 16).attr('text-anchor','middle').attr('font-size',16).text('Replace');
+      g.append('text').attr('x', A.x - R - 28).attr('y', A.y + 6).attr('text-anchor','end').attr('font-size',16).text('Delete');
+      g.append('text').attr('x', C.x + R + 28).attr('y', C.y + 6).attr('text-anchor','start').attr('font-size',16).text('Rewrite');
+
+      // helper for midpoints
+      const mid = (p,q,dx=0,dy=0)=> ({x:(p.x+q.x)/2 + dx, y:(p.y+q.y)/2 + dy});
+
+      // refined Roman numeral positions
+      const labelPos = [
+        {p:{x:A.x - R*0.34, y:A.y + R*0.28}, t:'I'},        // A only
+        {p:{x:B.x,          y:B.y - R*0.05}, t:'II'},       // B only
+        {p:{x:C.x + R*0.34, y:C.y + R*0.28}, t:'III'},      // C only
+        {p:mid(A,B, -R*0.12,  R*0.04),       t:'IV'},       // A∩B
+        {p:mid(B,C,  R*0.12,  R*0.04),       t:'V'},        // B∩C
+        {p:mid(A,C,  R*0.06,  R*0.20),       t:'VI'},       // A∩C (bottom lens)
+        {p:{x:(A.x+B.x+C.x)/3, y:(A.y+B.y+C.y)/3 + R*0.05}, t:'VII'} // triple
+      ];
+      const labels = g.selectAll('text.r').data(labelPos).enter().append('text')
+        .attr('class','r').attr('x', d=>d.p.x).attr('y', d=>d.p.y)
+        .attr('text-anchor','middle').attr('font-size',18).attr('font-weight',600)
+        .style('opacity',0)
+        .text(d=>d.t)
+        .transition().delay(420).duration(500).style('opacity',1);
+
+      // hover highlight (with click lock)
+      const hit = g.selectAll('circle.hit').data(centers).enter().append('circle')
+        .attr('class','hit').attr('cx',d=>d.x).attr('cy',d=>d.y).attr('r',R)
+        .attr('fill','transparent').style('cursor','pointer');
+
+      let locked = null;
+      function setState(idx){
+        g.selectAll('circle').attr('fill-opacity', (d,i)=> (idx==null||i===idx)? 0.42 : 0.18);
+        g.selectAll('circle').attr('stroke-width', (d,i)=> (idx==null||i===idx)? 1.8 : 1.0);
+      }
+      setState(null);
+      hit.on('mousemove', (e, d)=>{ if(locked!=null) return; const idx=centers.indexOf(d); setState(idx); })
+         .on('mouseout', ()=>{ if(locked!=null) return; setState(null); })
+         .on('click', (e,d)=>{ const idx=centers.indexOf(d); locked = (locked===idx? null : idx); setState(locked); });
+    })();
+
+    // ------- 2) Route (unchanged logic, English UI) -------
+    (function(){
+      const {svg, g, inner} = mountSVG('#route');
+      let cols=20, rows=10;
+      const cellW = inner.w/cols, cellH = inner.h/rows;
+      for(let i=0;i<=cols;i++) g.append('line').attr('x1',i*cellW).attr('x2',i*cellW).attr('y1',0).attr('y2',inner.h).attr('stroke','#e2e8f0');
+      for(let j=0;j<=rows;j++) g.append('line').attr('x1',0).attr('x2',inner.w).attr('y1',j*cellH).attr('y2',j*cellH).attr('stroke','#e2e8f0');
+      const start={c:2,r:8}; let stops=[{c:5,r:7},{c:9,r:5},{c:12,r:4}]; const end={c:16,r:2};
+      function toXY(p){ return [p.c*cellW + cellW/2, p.r*cellH + cellH/2]; }
+      function manhattan(a,b){ const pts=[]; let c=a.c, r=a.r; const dc=Math.sign(b.c-c), dr=Math.sign(b.r-r); while(c!==b.c){ c+=dc; pts.push({c,r}); } while(r!==b.r){ r+=dr; pts.push({c,r}); } return pts; }
+      function buildPath(){ const all=[start,...stops,end]; let cells=[]; for(let i=0;i<all.length-1;i++) cells=cells.concat(manhattan(all[i],all[i+1])); return [toXY(start)].concat(cells.map(toXY)); }
+      const line = d3.line().curve(d3.curveStep); const path = g.append('path').attr('fill','none').attr('stroke',TBL[2]).attr('stroke-width',3); const mover = g.append('circle').attr('r',6).attr('fill',TBL[3]);
+      function draw(){ const pathXY = buildPath(); path.attr('d',line(pathXY)); const len = path.node().getTotalLength(); path.attr('stroke-dasharray', `${len} ${len}`).attr('stroke-dashoffset', len).transition().duration(900).ease(d3.easeCubic).attr('stroke-dashoffset', 0); animateMover(); }
+      function animateMover(){ const len = path.node().getTotalLength(); const speed = +d3.select('#route-speed').property('value'); const dur = d3.scaleLinear().domain([1,10]).range([9000,2000])(speed); mover.interrupt(); function loop(dir=1){ mover.attr('fill', dir>0? TBL[3] : TBL[1]); mover.transition().duration(dur).ease(d3.easeLinear).tween('path', ()=> t=>{ const p = path.node().getPointAtLength(dir>0? t*len : (1-t)*len); mover.attr('cx',p.x).attr('cy',p.y); }).on('end', ()=> loop(-dir)); } loop(1); }
+      draw(); d3.select('#route-speed').on('input', animateMover); d3.select('#route-shuffle').on('click', ()=>{ stops = d3.shuffle(stops.concat([{c:Math.floor(Math.random()*cols), r:Math.floor(Math.random()*rows)}])).slice(0,3); draw(); });
+    })();
+
+    // ------- 3) Bars (unchanged) -------
+    (function(){
+      const {g, inner} = mountSVG('#freq');
+      let data = d3.range(10).map(i=>({k:String.fromCharCode(65+i), v:Math.floor(Math.random()*40+12)}));
+      let desc=true;
+      const x = d3.scaleBand().domain(data.map(d=>d.k)).range([0, inner.w]).padding(0.12);
+      const y = d3.scaleLinear().domain([0, d3.max(data,d=>d.v)]).nice().range([inner.h, 0]);
+      const gx = g.append('g').attr('class','axis').attr('transform',`translate(0,${inner.h})`).call(d3.axisBottom(x));
+      const gy = g.append('g').attr('class','axis').call(d3.axisLeft(y).ticks(6));
+      const bars = g.append('g');
+      function render(){ y.domain([0, d3.max(data,d=>d.v)]).nice(); gy.transition().duration(400).call(d3.axisLeft(y).ticks(6)); const sel = bars.selectAll('rect').data(data, d=>d.k); sel.join( enter=>enter.append('rect').attr('x', d=>x(d.k)).attr('width', x.bandwidth()).attr('y', y(0)).attr('height', 0).attr('fill', TBL[4]).on('mousemove', (e,d)=> showTip(`<b>${d.k}</b>: ${d.v}`, d3.pointer(e))).on('mouseout', hideTip).transition().duration(600).attr('y', d=>y(d.v)).attr('height', d=> y(0)-y(d.v)), update=>update.transition().duration(600).attr('x', d=>x(d.k)).attr('width', x.bandwidth()).attr('y', d=>y(d.v)).attr('height', d=> y(0)-y(d.v)), exit=>exit.transition().duration(300).attr('y', y(0)).attr('height',0).remove() ); }
+      render();
+      d3.select('#bars-sort').on('click', function(){ data.sort((a,b)=> desc? b.v-a.v : d3.ascending(a.k,b.k)); desc = !desc; x.domain(data.map(d=>d.k)); gx.transition().duration(600).call(d3.axisBottom(x)); render(); d3.select(this).text(desc? 'Sort Desc' : 'Sort A–Z'); });
+      d3.select('#bars-shuffle').on('click', ()=>{ data.forEach(d=> d.v = Math.floor(Math.random()*40+12)); render(); });
+    })();
+
+    // ------- 4) Math (unchanged) -------
+    (function(){
+      const {svg, g, inner} = mountSVG('#math');
+      const X = d3.range(0, Math.PI*2, 0.02);
+      let phi = 0; // phase
+      const series = [
+        {name:'sin(x+φ)', color:TBL[6], fn: (x)=>Math.sin(x+phi)},
+        {name:'cos(x+φ)', color:TBL[0], fn: (x)=>Math.cos(x+phi)}
+      ];
+      const x = d3.scaleLinear().domain([0, Math.PI*2]).range([0, inner.w]);
+      const y = d3.scaleLinear().domain([-1.2,1.2]).range([inner.h, 0]);
+      g.append('g').attr('class','axis').attr('transform',`translate(0,${inner.h})`).call(d3.axisBottom(x));
+      g.append('g').attr('class','axis').call(d3.axisLeft(y));
+      const line = d3.line().x(d=>x(d.x)).y(d=>y(d.y));
+      const paths = series.map(s=> g.append('path').attr('fill','none').attr('stroke',s.color).attr('stroke-width',2));
+      function draw(curve=true){ series.forEach((s,i)=>{ const pts = X.map(t=>({x:t, y:s.fn(t)})); const p = paths[i]; if(curve){ const total = p.node().getTotalLength?.()||0; p.attr('d', line(pts)).attr('stroke-dasharray', total? `${total} ${total}`: null).attr('stroke-dashoffset', total).transition().duration(500).attr('stroke-dashoffset', 0); } else { p.transition().duration(200).attr('d', line(pts)); } }); }
+      draw(true);
+      const cursor = g.append('line').attr('y1',0).attr('y2',inner.h).attr('stroke','#94a3b8').attr('stroke-dasharray','3,3');
+      svg.on('mousemove', (e)=>{ const [mx] = d3.pointer(e, g.node()); cursor.attr('x1',mx).attr('x2',mx); });
+      d3.select('#phase').on('input', function(){ phi = +this.value/100; draw(false); });
+    })();
+
+    // ------- 5) Chord Diagram (hover fade + random weights) -------
+    (function(){
+      const {svg, g, inner, width, height} = mountSVG('#chord', {w:820,h:420, margin:{top:10,right:10,bottom:10,left:10}});
+      const R = Math.min(inner.w, inner.h)/2 - 10;
+      const center = g.append('g').attr('transform', `translate(${inner.w/2},${inner.h/2})`);
+      const groups = ['Nav','Rec','Budget','Checkout'];
+      const color = d3.scaleOrdinal().domain(groups).range([TBL[0],TBL[1],TBL[2],TBL[3]]);
+      function randMatrix(){ const n=groups.length; const m=Array.from({length:n},()=>Array.from({length:n},()=>0)); for(let i=0;i<n;i++) for(let j=0;j<n;j++){ m[i][j]= i===j?0:Math.floor(Math.random()*60+10);} return m; }
+      let matrix = randMatrix();
+      const arc = d3.arc().innerRadius(R).outerRadius(R+12);
+      const ribbon = d3.ribbon().radius(R);
+      function draw(){ const layout = d3.chord().padAngle(0.05).sortSubgroups(d3.descending)(matrix); center.selectAll('g.group').data(layout.groups, d=>d.index).join(enter=>{ const gG = enter.append('g').attr('class','group'); gG.append('path').attr('class','arc').attr('d', arc).attr('fill', d=> color(groups[d.index])).attr('stroke','#fff'); gG.append('text').attr('dy',-R-16).attr('text-anchor','middle').text(d=> groups[d.index]).attr('font-size',12).attr('transform', d=>`rotate(${(d.startAngle+d.endAngle)/2*180/Math.PI})`); return gG; }); center.selectAll('path.ribbon').data(layout, d=> d.source.index+'-'+d.target.index).join( enter=> enter.append('path').attr('class','ribbon').attr('d', ribbon).attr('fill', d=> color(groups[d.source.index])).attr('fill-opacity',0.85).attr('stroke','#fff') ); center.selectAll('g.group, path.ribbon').on('mouseover', function(e,d){ const idx = d.index!==undefined? d.index : d.source.index; center.selectAll('path.ribbon').classed('fade', r=> r.source.index!==idx && r.target.index!==idx); center.selectAll('g.group').classed('fade', g=> g.index!==idx); }).on('mouseout', ()=>{ center.selectAll('.fade').classed('fade', false); }); }
+      draw();
+      d3.select('#chord-random').on('click', ()=>{ matrix = randMatrix(); center.selectAll('*').remove(); draw(); });
+      d3.select('#chord-reset').on('click', ()=>{ matrix = [[0,30,20,10],[25,0,35,15],[18,28,0,22],[12,16,26,0]]; center.selectAll('*').remove(); draw(); });
+    })();
+  </script>
 </body>
 </html>
